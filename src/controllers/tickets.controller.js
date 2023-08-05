@@ -1,9 +1,11 @@
 import { userDTO } from '../DAO/DTO/user.dto.js';
 import { CartClass } from '../DAO/classes/carts.class.js';
+import { ProductClass } from '../DAO/classes/products.class.js';
 import { TicketModel } from '../DAO/models/tickets.models.js';
 import { CartService } from '../services/carts.service.js';
 const cartService = new CartService();
 const cartClass = new CartClass();
+const productClass = new ProductClass();
 
 class TicketsController {
   async getCart(req, res) {
@@ -89,6 +91,17 @@ class TicketsController {
         if (quantityInCart <= availableStock) {
           const precioTotalProducto = productPrice * quantityInCart;
           cartConStock.push({ idProduct, quantity: quantityInCart, precioTotalProducto, title });
+          const product = productClass.getOneById(idProduct);
+          productClass.updateOne(
+            idProduct,
+            product.description,
+            product.title,
+            product.code,
+            product.price,
+            quantityInCart,
+            product.status,
+            product.thumbnails
+          );
         } else {
           cartSinStock.push({ idProduct, quantity: quantityInCart });
         }
