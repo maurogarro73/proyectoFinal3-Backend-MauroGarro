@@ -1,6 +1,10 @@
 import express from 'express';
+import { userDTO } from '../DAO/DTO/user.dto.js';
 import { CartClass } from '../DAO/classes/carts.class.js';
 import { isCartOwner, isUser } from '../middleware/auth.js';
+import { TicketModel } from '../DAO/models/tickets.models.js';
+import { CartService } from '../services/carts.service.js';
+const cartService = new CartService();
 
 const cartClass = new CartClass();
 
@@ -30,9 +34,10 @@ cartsHtml.get('/:cid', isUser, isCartOwner, async (req, res) => {
   }
 });
 
-cartsHtml.get('/:cid/purchese', async (req, res) => {
+cartsHtml.get('/:cid/purchase', async (req, res) => {
   try {
     const { cid } = req.params;
+    const infoUser = new userDTO(req.session);
     const cartFound = await cartClass.findCartById(cid);
     if (!cartFound) {
       throw new Error('Cart not found');
@@ -40,15 +45,86 @@ cartsHtml.get('/:cid/purchese', async (req, res) => {
 
     const idCart = cartFound._id;
 
+    // Calcula el total de la compra
     let cart = cartFound.products.map((item) => {
       return {
+        id: item._id._id,
         title: item._id.title,
         price: item._id.price,
         quantity: item.quantity,
       };
     });
+    console.log('devuelve lo de adentro del cart', cart);
 
-    return res.status(200).render('purchese', { cart: cart, idCart });
+    let precioTotal = 0;
+    cart.forEach((producto) => {
+      precioTotal += producto.price * producto.quantity;
+    });
+
+    return res.status(200).render('purchase', { cart: cart, idCart, infoUser, precioTotal });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+cartsHtml.get('/:cid/purchase/ticket', async (req, res) => {
+  try {
+    const { cid } = req.params;
+    const infoUser = new userDTO(req.session);
+    const infoUserEmail = req.session.email;
+    const cartFound = await cartClass.findCartById(cid);
+    if (!cartFound) {
+      throw new Error('Cart not found');
+    }
+
+    const idCart = cartFound._id;
+
+    let cartConStock = [];
+    let cartSinStock = [];
+
+    /* Separo los productos con Stock y Sin stock */
+    cartFound.products.forEach((item) => {
+      const idProduct = item._id._id.toString();
+      const title = item._id.title;
+      const quantityInCart = parseInt(item.quantity);
+      const availableStock = parseInt(item._id.stock);
+      const productPrice = parseInt(item._id.price);
+
+      if (quantityInCart <= availableStock) {
+        const precioTotalProducto = productPrice * quantityInCart;
+        cartConStock.push({ idProduct, quantity: quantityInCart, precioTotalProducto, title });
+      } else {
+        cartSinStock.push({ idProduct, quantity: quantityInCart });
+      }
+    });
+
+    let precioTotal = 0;
+    cartConStock.forEach((producto) => {
+      precioTotal += producto.precioTotalProducto * producto.quantity;
+    });
+
+    let cart = cartConStock.map((item) => {
+      return {
+        id: item.idProduct,
+        quantity: item.quantity,
+        price: item.precioTotalProducto,
+        title: item.title,
+      };
+    });
+
+    const ticketData = {
+      code: '',
+      purchase_datetime: new Date(),
+      amount: precioTotal,
+      purchaser: infoUserEmail,
+      products: cart,
+    };
+
+    let ticket = await TicketModel.create(ticketData);
+    let code = ticket._id.toString();
+    await TicketModel.findByIdAndUpdate(ticket._id, { code: code });
+
+    return res.status(200).render('ticketFinal', { cart: cart, idCart, infoUser, precioTotal });
   } catch (error) {
     console.log(error);
   }
