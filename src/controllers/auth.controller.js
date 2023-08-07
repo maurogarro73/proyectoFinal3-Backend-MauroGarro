@@ -40,7 +40,7 @@ class AuthController {
 
     req.session.email = req.user.email;
     req.session.isAdmin = req.user.isAdmin;
-    req.session.cart = req.user.cart;
+    req.session.cart = req.user.cart._id;
 
     return res.redirect('/auth/perfil');
   }
