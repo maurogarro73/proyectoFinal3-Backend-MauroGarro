@@ -8,7 +8,7 @@ sessionsRouter.get('/github', passport.authenticate('github', { scope: ['user:em
 sessionsRouter.get('/githubcallback', passport.authenticate('github', { failureRedirect: '/auth/login' }), (req, res) => {
   req.session.email = req.user.email;
   req.session.isAdmin = req.user.isAdmin;
-  req.session.cart = req.user.cart;
+  req.session.cart = req.user.cart._id;
   // Successful authentication, redirect home.
   res.redirect('/products');
 });
