@@ -94,13 +94,14 @@ class TicketsController {
           const product = productClass.getOneById(idProduct);
           productClass.updateOne(
             idProduct,
-            product.description,
             product.title,
-            product.code,
+            product.description,
             product.price,
+            product.thumbnails,
+            product.code,
             quantityInCart,
-            product.status,
-            product.thumbnails
+            product.category,
+            product.status
           );
         } else {
           cartSinStock.push({ idProduct, quantity: quantityInCart });
